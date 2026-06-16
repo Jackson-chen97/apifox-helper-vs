@@ -1,0 +1,196 @@
+{
+  "name": "apifox-helper-vs",
+  "displayName": "Apifox Helper",
+  "description": "解析 Spring Boot Controller 并生成 OpenAPI 文档的 VS Code 插件，支持多项目配置、三级树结构和一键同步到 Apifox 平台",
+  "version": "1.0.0",
+  "publisher": "JacksonChen",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "spring",
+    "api",
+    "mock",
+    "http",
+    "openapi",
+    "apifox",
+    "swagger",
+    "java",
+    "controller"
+  ],
+  "icon": "pluginIcon.png",
+  "galleryBanner": {
+    "color": "#C80000",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JacksonChen/apifox-helper-vs.git",
+    "original": "https://github.com/wangruchao-github/vs-apifox"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "apifox-helper",
+          "title": "Apifox Helper",
+          "icon": "resources/api.svg"
+        }
+      ]
+    },
+    "views": {
+      "apifox-helper": [
+        {
+          "id": "apiFoxHelper.view",
+          "name": "API列表"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "apifox-helper.searchApi",
+        "key": "ctrl+\\",
+        "when": "view == apiFoxHelper.view || viewContainer == apifox-helper"
+      }
+    ],
+    "commands": [
+      {
+        "command": "apifox-helper.refreshApiList",
+        "title": "刷新API列表",
+        "icon": "$(refresh)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.searchApi",
+        "title": "搜索API",
+        "icon": "$(search)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.configureProjectApifox",
+        "title": "配置Apifox推送",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.syncSelectedApis",
+        "title": "同步选中的接口",
+        "icon": "$(cloud-upload)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.toggleSelectApi",
+        "title": "选择接口",
+        "icon": "$(add)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.gotoDefinition",
+        "title": "跳转到定义",
+        "icon": "$(go-to-file)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.uploadToApifox",
+        "title": "上传到Apifox",
+        "icon": "$(cloud-upload)",
+        "category": "Apifox Helper"
+      },
+      {
+        "command": "apifox-helper.gotoTagDefinition",
+        "title": "跳转到标签定义",
+        "icon": "$(go-to-file)",
+        "category": "Apifox Helper"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "apifox-helper.searchApi",
+          "when": "view == apiFoxHelper.view",
+          "group": "navigation@0"
+        },
+        {
+          "command": "apifox-helper.refreshApiList",
+          "when": "view == apiFoxHelper.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "apifox-helper.syncSelectedApis",
+          "when": "view == apiFoxHelper.view",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "apifox-helper.toggleSelectApi",
+          "when": "view == apiFoxHelper.view && viewItem == api && !apifox-helper.isScanning",
+          "group": "inline@1"
+        },
+        {
+          "command": "apifox-helper.toggleSelectApi",
+          "when": "view == apiFoxHelper.view && viewItem == swaggerTag && !apifox-helper.isScanning",
+          "group": "inline@1"
+        },
+        {
+          "command": "apifox-helper.toggleSelectApi",
+          "when": "view == apiFoxHelper.view && viewItem == project && !apifox-helper.isScanning",
+          "group": "inline@1"
+        },
+        {
+          "command": "apifox-helper.gotoDefinition",
+          "when": "view == apiFoxHelper.view && viewItem == api",
+          "group": "inline@2"
+        },
+        {
+          "command": "apifox-helper.gotoTagDefinition",
+          "when": "view == apiFoxHelper.view && viewItem == swaggerTag",
+          "group": "inline@2"
+        },
+        {
+          "command": "apifox-helper.uploadToApifox",
+          "when": "view == apiFoxHelper.view && viewItem == api && !apifox-helper.isScanning",
+          "group": "inline@3"
+        },
+        {
+          "command": "apifox-helper.uploadToApifox",
+          "when": "view == apiFoxHelper.view && viewItem == swaggerTag && !apifox-helper.isScanning",
+          "group": "inline@3"
+        },
+        {
+          "command": "apifox-helper.uploadToApifox",
+          "when": "view == apiFoxHelper.view && viewItem == project && !apifox-helper.isScanning",
+          "group": "inline@3"
+        },
+        {
+          "command": "apifox-helper.configureProjectApifox",
+          "when": "view == apiFoxHelper.view && viewItem == project",
+          "group": "inline@4"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "antlr4ts": "^0.5.0-alpha.4",
+    "axios": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.0.0",
+    "@types/vscode": "^1.100.0",
+    "@vscode/vsce": "^2.15.0",
+    "typescript": "^4.9.0"
+  }
+}

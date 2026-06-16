@@ -1,0 +1,7 @@
+out
+node_modules
+*.vsix
+.specstory
+.cursorindexingignore
+.DS_Store
+.qoder
