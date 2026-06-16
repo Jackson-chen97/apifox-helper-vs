@@ -2,6 +2,12 @@
 
 一个功能强大的 VS Code 插件，用于解析 Spring Boot Controller 并生成 OpenAPI 文档，支持多项目配置、三级树结构和一键同步到 Apifox 平台。
 
+## 版本历史
+
+| 版本 | 发布日期 | 主要更新 | 下载链接 |
+|------|----------|----------|----------|
+| 1.0.0 | 2026-06-16 | 初始版本：Spring Boot Controller 解析、OpenAPI 文档生成、Apifox 一键同步、多项目支持、三级树结构 | [apifox-helper-vs-1.0.0.vsix](https://github.com/JacksonChen/apifox-helper-vs/releases/tag/v1.0.0) |
+
 ## 功能特性
 
 ### 核心功能
