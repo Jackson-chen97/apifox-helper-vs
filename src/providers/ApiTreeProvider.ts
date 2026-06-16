@@ -4,6 +4,7 @@ import { ApiEndpoint } from '../types/index.js';
 import { SpringControllerParser } from '../parser/SpringControllerParser.js';
 import { ApifoxService } from '../services/ApifoxService.js';
 import { ConfigService } from '../services/ConfigService.js';
+import { ApiCacheService } from '../services/ApiCacheService.js';
 import { Logger } from '../utils/Logger.js';
 
 export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
@@ -188,7 +189,6 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
     }
 
     async refresh(): Promise<void> {
-        this.apiDocs = [];
         this.selectedApis.clear();
         
         // 设置扫描状态为 true
@@ -230,40 +230,84 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
             });
         }
 
-        // 3. 先显示顶层目录（标记为loading）
-        scanTasks.forEach(task => this.loadingProjects.add(task.rootPath));
-        this._onDidChangeTreeData.fire();
-
-        Logger.info('[Refresh] 开始并发扫描，项目数:', scanTasks.length);
-
-        // 4. 并发扫描所有项目
-        const startTime = Date.now();
-        const scanPromises = scanTasks.map(async (task) => {
-            Logger.info(`[Refresh] 开始扫描: ${task.projectName}`);
-            const parser = new SpringControllerParser(task.sourcePaths, task.projectName, task.rootPath);
-            const docs = await parser.parse();
-            Logger.info(`[Refresh] 完成扫描: ${task.projectName}，发现 ${docs.length} 个接口`);
-            return { rootPath: task.rootPath, docs };
-        });
-
-        const results = await Promise.all(scanPromises);
-        const endTime = Date.now();
-        Logger.info(`[Refresh] 并发扫描完成，耗时: ${endTime - startTime}ms`);
-
-        // 5. 合并结果
-        for (const result of results) {
-            this.apiDocs.push(...result.docs);
-            this.loadingProjects.delete(result.rootPath);
+        // 1. 尝试从缓存加载数据（快速显示）
+        const cachedApis: ApiEndpoint[] = [];
+        
+        for (const task of scanTasks) {
+            if (task.rootPath !== '默认项目' && ApiCacheService.hasCache(task.rootPath)) {
+                const cacheData = ApiCacheService.readCache(task.rootPath);
+                if (cacheData && cacheData.apiEndpoints) {
+                    cachedApis.push(...cacheData.apiEndpoints);
+                    Logger.info(`[Refresh] 从缓存加载 ${task.projectName}，包含 ${cacheData.apiEndpoints.length} 个接口`);
+                } else {
+                    // 缓存读取失败，标记为loading
+                    this.loadingProjects.add(task.rootPath);
+                }
+            } else {
+                // 没有缓存的项目，标记为loading
+                this.loadingProjects.add(task.rootPath);
+            }
         }
 
-        // 6. 再次触发更新，显示最终结果
+        // 设置API数据并显示
+        this.apiDocs = cachedApis;
         this._onDidChangeTreeData.fire();
-        this.initialized = true;
         
-        // 设置扫描状态为 false
-        this.setScanningContext(false);
+        if (cachedApis.length > 0) {
+            Logger.info('[Refresh] 缓存数据已显示，后台继续扫描更新');
+        } else {
+            Logger.info('[Refresh] 无缓存数据，显示loading状态');
+        }
 
-        Logger.info('[Refresh] 扫描完成，总接口数:', this.apiDocs.length);
+        Logger.info('[Refresh] 开始后台扫描，项目数:', scanTasks.length);
+
+        // 2. 后台异步扫描（不阻塞UI）
+        this.backgroundScan(scanTasks);
+    }
+
+    // 后台扫描方法
+    private async backgroundScan(scanTasks: { rootPath: string; sourcePaths: string[]; projectName: string }[]): Promise<void> {
+        try {
+            const startTime = Date.now();
+            
+            // 并发扫描所有项目
+            const scanPromises = scanTasks.map(async (task) => {
+                Logger.info(`[BackgroundScan] 开始扫描: ${task.projectName}`);
+                const parser = new SpringControllerParser(task.sourcePaths, task.projectName, task.rootPath);
+                const docs = await parser.parse();
+                Logger.info(`[BackgroundScan] 完成扫描: ${task.projectName}，发现 ${docs.length} 个接口`);
+                
+                // 保存缓存（非默认项目）
+                if (task.rootPath !== '默认项目') {
+                    ApiCacheService.saveCache(task.rootPath, task.projectName, docs);
+                }
+                
+                return { rootPath: task.rootPath, docs };
+            });
+
+            const results = await Promise.all(scanPromises);
+            const endTime = Date.now();
+            Logger.info(`[BackgroundScan] 后台扫描完成，耗时: ${endTime - startTime}ms`);
+
+            // 合并结果
+            this.apiDocs = [];
+            for (const result of results) {
+                this.apiDocs.push(...result.docs);
+                this.loadingProjects.delete(result.rootPath);
+            }
+
+            // 触发更新，显示最新结果
+            this._onDidChangeTreeData.fire();
+            this.initialized = true;
+            
+            // 设置扫描状态为 false
+            this.setScanningContext(false);
+
+            Logger.info('[BackgroundScan] 扫描完成，总接口数:', this.apiDocs.length);
+        } catch (error) {
+            Logger.error('[BackgroundScan] 后台扫描失败:', error);
+            this.setScanningContext(false);
+        }
     }
 
     toggleSelect(api: ApiEndpoint | any) {
