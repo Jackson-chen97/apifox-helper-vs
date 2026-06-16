@@ -9,6 +9,7 @@ import { ParseTreeWalker } from "antlr4ts/tree";
 import { SpringControllerListener } from "./SpringControllerListener";
 import { CommentListener } from "./CommentListener";
 import { OpenAPIGenerator } from "./OpenAPIGenerator.js";
+import { Logger } from "../utils/Logger.js";
 
 export class SpringControllerParser {
   private code: string = "";
@@ -36,7 +37,7 @@ export class SpringControllerParser {
     for (const file of files) {
       try {
         this.code = await this.readFile(file);
-        console.log("解析文件:", file.fsPath);
+        Logger.info("解析文件:", file.fsPath);
         controllerListener.setFilePath(file.fsPath)
         // 创建词法分析器和token流
         const chars = CharStreams.fromString(this.code);
@@ -54,7 +55,7 @@ export class SpringControllerParser {
         ParseTreeWalker.DEFAULT.walk(controllerListener as any, tree);
         
       } catch (error) {
-        console.error("解析失败:", file.fsPath, error);
+        Logger.error("解析失败:", file.fsPath, error);
       }
     }
     if(controllerListener.endpoints.length > 0){
@@ -186,10 +187,10 @@ export class SpringControllerParser {
           const pattern = relativePath 
             ? `${relativePath}/**/src/main/java/**/*.java`
             : `**/src/main/java/**/*.java`;
-          console.log('[findControllerFiles] 搜索模式:', pattern, '工作区:', targetFolder.name);
+          Logger.info('[findControllerFiles] 搜索模式:', pattern, '工作区:', targetFolder.name);
           
           const found = await vscode.workspace.findFiles(pattern);
-          console.log('[findControllerFiles] 找到文件数:', found.length);
+          Logger.info('[findControllerFiles] 找到文件数:', found.length);
           
           // 过滤：确保文件路径确实属于当前项目
           const filteredFiles = found.filter(file => {
@@ -400,7 +401,7 @@ export class SpringControllerParser {
       const files = await this.findFileByPackagePath(
         importContentArray[1].replace(/\./g, "/")
       );
-      console.log("files:", files);
+      Logger.info("files:", files);
       const fileContent = await this.readFile(files[0]);
       return fileContent;
     } catch (error: any) {

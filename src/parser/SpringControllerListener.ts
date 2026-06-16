@@ -6,6 +6,7 @@ import {
 } from "./JavaParser";
 
 import { ApiEndpoint, ApiParameter } from "../types/index.js";
+import { Logger } from "../utils/Logger.js";
 
 export class SpringControllerListener implements ParseTreeListener {
   openapi: any;
@@ -192,7 +193,7 @@ export class SpringControllerListener implements ParseTreeListener {
         )
         .flat() || [];
 
-    console.debug("Class annotations:", {
+    Logger.debug("Class annotations:", {
       className: ctx.identifier()?.text,
       annotations: classAnnotations.map((a: any) => a.text),
     });
@@ -635,7 +636,7 @@ export class SpringControllerListener implements ParseTreeListener {
 
   // 进入方法声明（捕获 @GetMapping/@PostMapping 等）
   enterMethodDeclaration(ctx: MethodDeclarationContext) {
-    console.debug("Entering method declaration", {
+    Logger.debug("Entering method declaration", {
       methodName: ctx.identifier()?.text,
       currentClass: this.currentClass,
     });
@@ -1089,7 +1090,7 @@ export class SpringControllerListener implements ParseTreeListener {
   // 退出方法时保存到 OpenAPI
   exitMethodDeclaration(ctx: MethodDeclarationContext) {
     // 添加日志以便调试
-    console.debug("Exiting method declaration", {
+    Logger.debug("Exiting method declaration", {
       hasCurrentMethod: !!this.currentMethod,
       methodName: ctx.identifier()?.text,
     });
@@ -1122,7 +1123,7 @@ export class SpringControllerListener implements ParseTreeListener {
           }
         })
       } catch (error) {
-        console.error("Error adding path to OpenAPI:", error);
+        Logger.error("Error adding path to OpenAPI:", error);
       }
       this.currentMethod = null;
     }

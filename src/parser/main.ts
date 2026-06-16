@@ -10,6 +10,7 @@ import {
 import { CommentListener } from "./CommentListener";
 import { SpringControllerListener } from "./SpringControllerListener";
 import { OpenAPIGenerator } from "./OpenAPIGenerator";
+import { Logger } from "../utils/Logger.js";
 
 
 const code = `
@@ -105,4 +106,4 @@ ParseTreeWalker.DEFAULT.walk(commentListener, tree);  // 先处理注释
 ParseTreeWalker.DEFAULT.walk(controllerListener, tree);  // 再处理控制器
 
 // 输出 OpenAPI 文档
-console.log(openapiGenerator.build());
+Logger.info(openapiGenerator.build());

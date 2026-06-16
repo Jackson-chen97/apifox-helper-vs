@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from '../utils/Logger.js';
 
 // 项目配置（单项目配置文件格式）
 export interface ProjectConfig {
@@ -90,7 +91,7 @@ export class ConfigService {
 }`;
 
         fs.writeFileSync(configPath, template, 'utf-8');
-        console.log('[ConfigService] 配置文件已创建:', configPath);
+        Logger.info('[ConfigService] 配置文件已创建:', configPath);
     }
 
     // 打开配置文件
@@ -160,7 +161,7 @@ export class ConfigService {
             
             return config;
         } catch (error) {
-            console.error('读取配置失败:', error);
+            Logger.error('读取配置失败:', error);
             return null;
         }
     }
@@ -193,7 +194,7 @@ export class ConfigService {
 
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         } catch (error) {
-            console.error('保存配置失败:', error);
+            Logger.error('保存配置失败:', error);
             throw error;
         }
     }
@@ -347,7 +348,7 @@ export class ConfigService {
             
             return config as ProjectConfig;
         } catch (error) {
-            console.error('读取项目配置失败:', error);
+            Logger.error('读取项目配置失败:', error);
             return null;
         }
     }
@@ -365,7 +366,7 @@ export class ConfigService {
 
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         } catch (error) {
-            console.error('保存项目配置失败:', error);
+            Logger.error('保存项目配置失败:', error);
             throw error;
         }
     }

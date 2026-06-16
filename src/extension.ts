@@ -5,19 +5,22 @@ import { MockDataGenerator } from './generators/MockDataGenerator.js';
 import { ApifoxService } from './services/ApifoxService.js';
 import { ConfigService } from './services/ConfigService.js';
 import { ApiTreeProvider } from './providers/ApiTreeProvider.js';
+import { Logger } from './utils/Logger.js';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('扩展已激活');
+    // 初始化Logger
+    Logger.init(context);
+    Logger.info('扩展已激活');
 
     // 初始化配置文件
     ConfigService.initConfigFile();
 
     // 注册API文档生成命令
     let generateDocsDisposable = vscode.commands.registerCommand('apifox-helper.generateDocs', async () => {
-        console.log('开始生成API文档');
+        Logger.info('开始生成API文档');
         const parser = new SpringControllerParser();
         const apiDocs = await parser.parse();
-        console.log('解析结果:', apiDocs);
+        Logger.info('解析结果:', apiDocs);
         ApiDocumentProvider.createOrShow(context.extensionUri, apiDocs);
     });
 
@@ -70,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
                 projectConfig.apifoxModuleId
             );
             const res = await apifoxService.uploadApiDocs(apiDocs);
-            console.log('apifox上传结果:', res);
+            Logger.info('apifox上传结果:', res);
 
             vscode.window.showInformationMessage(`API文档已成功上传到Apifox项目: ${projectConfig.projectName}`);
         } catch (error) {
@@ -204,5 +207,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-    console.log('Apifox Helper 扩展已停用');
+    Logger.info('Apifox Helper 扩展已停用');
 } 

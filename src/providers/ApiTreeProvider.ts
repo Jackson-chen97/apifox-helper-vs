@@ -4,6 +4,7 @@ import { ApiEndpoint } from '../types/index.js';
 import { SpringControllerParser } from '../parser/SpringControllerParser.js';
 import { ApifoxService } from '../services/ApifoxService.js';
 import { ConfigService } from '../services/ConfigService.js';
+import { Logger } from '../utils/Logger.js';
 
 export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ApiTreeItem | undefined | null | void> = new vscode.EventEmitter<ApiTreeItem | undefined | null | void>();
@@ -195,7 +196,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
         
         const workspaceFolders = vscode.workspace.workspaceFolders;
 
-        console.log('[Refresh] 工作区文件夹数量:', workspaceFolders?.length || 0);
+        Logger.info('[Refresh] 工作区文件夹数量:', workspaceFolders?.length || 0);
 
         // 收集所有待扫描的项目
         const scanTasks: { rootPath: string; sourcePaths: string[]; projectName: string }[] = [];
@@ -233,21 +234,21 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
         scanTasks.forEach(task => this.loadingProjects.add(task.rootPath));
         this._onDidChangeTreeData.fire();
 
-        console.log('[Refresh] 开始并发扫描，项目数:', scanTasks.length);
+        Logger.info('[Refresh] 开始并发扫描，项目数:', scanTasks.length);
 
         // 4. 并发扫描所有项目
         const startTime = Date.now();
         const scanPromises = scanTasks.map(async (task) => {
-            console.log(`[Refresh] 开始扫描: ${task.projectName}`);
+            Logger.info(`[Refresh] 开始扫描: ${task.projectName}`);
             const parser = new SpringControllerParser(task.sourcePaths, task.projectName, task.rootPath);
             const docs = await parser.parse();
-            console.log(`[Refresh] 完成扫描: ${task.projectName}，发现 ${docs.length} 个接口`);
+            Logger.info(`[Refresh] 完成扫描: ${task.projectName}，发现 ${docs.length} 个接口`);
             return { rootPath: task.rootPath, docs };
         });
 
         const results = await Promise.all(scanPromises);
         const endTime = Date.now();
-        console.log(`[Refresh] 并发扫描完成，耗时: ${endTime - startTime}ms`);
+        Logger.info(`[Refresh] 并发扫描完成，耗时: ${endTime - startTime}ms`);
 
         // 5. 合并结果
         for (const result of results) {
@@ -262,7 +263,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
         // 设置扫描状态为 false
         this.setScanningContext(false);
 
-        console.log('[Refresh] 扫描完成，总接口数:', this.apiDocs.length);
+        Logger.info('[Refresh] 扫描完成，总接口数:', this.apiDocs.length);
     }
 
     toggleSelect(api: ApiEndpoint | any) {
@@ -420,8 +421,8 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
 
     async uploadToApifox(item: ApiTreeItem) {
         try {
-            console.log('[Apifox] 开始上传流程');
-            console.log('[Apifox] 触发节点:', item.id, 'contextValue:', item.contextValue);
+            Logger.info('[Apifox] 开始上传流程');
+            Logger.info('[Apifox] 触发节点:', item.id, 'contextValue:', item.contextValue);
 
             // 确定项目根路径
             let projectRootPath = '';
@@ -431,7 +432,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
             if (item.contextValue === 'project') {
                 // 项目节点：上传该项目所有接口
                 projectRootPath = item.id.replace('project:', '');
-                console.log('[Apifox] 项目节点，rootPath:', projectRootPath);
+                Logger.info('[Apifox] 项目节点，rootPath:', projectRootPath);
                 apisToUpload = this.apiDocs.filter(api => (api.projectRootPath || '未分类项目') === projectRootPath);
                 projectName = item.label as string;
             } else if (item.contextValue === 'swaggerTag') {
@@ -439,7 +440,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
                 const parts = item.id.replace('swaggerTag:', '').split('/');
                 projectRootPath = parts[0];
                 const swaggerTag = parts.slice(1).join('/');
-                console.log('[Apifox] 标签节点，rootPath:', projectRootPath, 'swaggerTag:', swaggerTag);
+                Logger.info('[Apifox] 标签节点，rootPath:', projectRootPath, 'swaggerTag:', swaggerTag);
                 apisToUpload = this.apiDocs.filter(api => 
                     (api.projectRootPath || '未分类项目') === projectRootPath &&
                     (api.swaggerTags || api.className || '未分类') === swaggerTag
@@ -448,7 +449,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
             } else if (item.contextValue === 'api') {
                 // 接口节点：上传单个接口
                 const api = this.apiDocs.find(api => api.id === item.id);
-                console.log('[Apifox] 接口节点，apiId:', item.id, 'found:', !!api);
+                Logger.info('[Apifox] 接口节点，apiId:', item.id, 'found:', !!api);
                 if (api) {
                     apisToUpload = [api];
                     projectRootPath = api.projectRootPath || '';
@@ -456,9 +457,9 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
                 }
             }
 
-            console.log('[Apifox] 待上传接口数量:', apisToUpload.length);
+            Logger.info('[Apifox] 待上传接口数量:', apisToUpload.length);
             if (apisToUpload.length > 0) {
-                console.log('[Apifox] 前3个接口:', apisToUpload.slice(0, 3).map(a => ({
+                Logger.info('[Apifox] 前3个接口:', apisToUpload.slice(0, 3).map(a => ({
                     id: a.id,
                     path: a.path,
                     method: a.method,
@@ -470,11 +471,11 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
 
             if (apisToUpload.length === 0) {
                 vscode.window.showWarningMessage('没有找到要上传的接口');
-                console.warn('[Apifox] 没有找到要上传的接口');
+                Logger.warn('[Apifox] 没有找到要上传的接口');
                 return;
             }
 
-            console.log('[Apifox] 项目根路径:', projectRootPath);
+            Logger.info('[Apifox] 项目根路径:', projectRootPath);
             
             // 检查该项目的配置是否完整
             const validation = await ConfigService.validateProjectConfig(projectRootPath);
@@ -496,7 +497,7 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
                 return;
             }
 
-            console.log('[Apifox] 创建ApifoxService，参数:', {
+            Logger.info('[Apifox] 创建ApifoxService，参数:', {
                 apiKey: projectConfig.apiKey ? projectConfig.apiKey.substring(0, 10) + '...' : 'undefined',
                 projectId: projectConfig.apifoxProjectId,
                 projectName: projectConfig.projectName,
@@ -512,16 +513,16 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
             
             // 确保有schemas信息
             if (apisToUpload.length > 0 && !apisToUpload[0].schemas) {
-                console.log('[Apifox] 接口缺少schemas，尝试从apiDocs[0]获取');
+                Logger.info('[Apifox] 接口缺少schemas，尝试从apiDocs[0]获取');
                 apisToUpload[0].schemas = this.apiDocs[0]?.schemas;
             }
             
-            console.log('[Apifox] 开始调用ApifoxService.uploadApiDocs...');
+            Logger.info('[Apifox] 开始调用ApifoxService.uploadApiDocs...');
             const result = await apifoxService.uploadApiDocs(apisToUpload);
-            console.log('[Apifox] 上传成功，结果:', result);
+            Logger.info('[Apifox] 上传成功，结果:', result);
             vscode.window.showInformationMessage(`成功上传 ${apisToUpload.length} 个接口到项目: ${projectConfig.projectName}`);
         } catch (error) {
-            console.error('[Apifox] 上传失败:', error);
+            Logger.error('[Apifox] 上传失败:', error);
             vscode.window.showErrorMessage(`上传失败: ${error}`);
         }
     }

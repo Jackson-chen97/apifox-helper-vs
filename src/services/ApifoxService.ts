@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ApiEndpoint } from '../types/index.js';
 import { OpenAPIConverter } from '../converters/OpenAPIConverter.js';
+import { Logger } from '../utils/Logger.js';
 
 export class ApifoxService {
     private apiKey: string;
@@ -40,7 +41,7 @@ export class ApifoxService {
             requestBody.options.endpointOverwriteBehavior = 'OVERWRITE_EXISTING';
             requestBody.options.schemaOverwriteBehavior = 'OVERWRITE_EXISTING';
             
-            console.log('[ApifoxService] requestBody:', JSON.stringify(requestBody, null, 2));
+            Logger.info('[ApifoxService] requestBody:', JSON.stringify(requestBody, null, 2));
             
             // 上传到Apifox
             const response = await axios.post(
@@ -56,7 +57,7 @@ export class ApifoxService {
             );
             return response.data;
         } catch (error) {
-            console.error('上传到Apifox失败:', error);
+            Logger.error('上传到Apifox失败:', error);
             throw error;
         }
     }
