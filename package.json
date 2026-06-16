@@ -2,7 +2,7 @@
   "name": "apifox-helper-vs",
   "displayName": "Apifox Helper",
   "description": "解析 Spring Boot Controller 并生成 OpenAPI 文档的 VS Code 插件，支持多项目配置、三级树结构和一键同步到 Apifox 平台",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "JacksonChen",
   "engines": {
     "vscode": "^1.100.0"

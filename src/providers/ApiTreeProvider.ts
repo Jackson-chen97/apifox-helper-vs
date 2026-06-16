@@ -59,6 +59,36 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
         return element;
     }
 
+    getParent(element: ApiTreeItem): vscode.ProviderResult<ApiTreeItem> {
+        // 根据元素的contextValue和id推断父元素
+        if (element.contextValue === 'api') {
+            // API节点的父元素是swagger标签节点
+            const api = this.apiDocs.find(api => api.id === element.id);
+            if (api) {
+                const projectRootPath = api.projectRootPath || '未分类项目';
+                const swaggerTag = api.swaggerTags || api.className || '未分类';
+                return new ApiTreeItem(
+                    swaggerTag,
+                    `swaggerTag:${projectRootPath}/${swaggerTag}`,
+                    vscode.TreeItemCollapsibleState.Expanded,
+                    'swaggerTag'
+                );
+            }
+        } else if (element.contextValue === 'swaggerTag') {
+            // swagger标签节点的父元素是项目节点
+            const parts = element.id.replace('swaggerTag:', '').split('/');
+            const rootPath = parts[0];
+            return new ApiTreeItem(
+                path.basename(rootPath),
+                `project:${rootPath}`,
+                vscode.TreeItemCollapsibleState.Expanded,
+                'project'
+            );
+        }
+        // 项目节点没有父元素
+        return undefined;
+    }
+
     getChildren(element?: ApiTreeItem): Thenable<ApiTreeItem[]> {
         let apis = this.apiDocs;
         if (this.searchText) {
@@ -574,6 +604,113 @@ export class ApiTreeProvider implements vscode.TreeDataProvider<ApiTreeItem> {
     async search(text: string) {
         this.searchText = text;
         this._onDidChangeTreeData.fire();
+    }
+
+    // 获取所有API数据（用于搜索建议）
+    getApis(): ApiEndpoint[] {
+        return this.apiDocs;
+    }
+
+    // 聚焦树视图中的特定API
+    async focusApi(apiId: string) {
+        if (!this.treeView) {
+            Logger.warn('[FocusApi] 树视图未初始化');
+            return;
+        }
+
+        // 查找API
+        const api = this.apiDocs.find(api => api.id === apiId);
+        if (!api) {
+            Logger.warn('[FocusApi] 未找到API:', apiId);
+            return;
+        }
+
+        Logger.info('[FocusApi] 开始聚焦API:', api.path, api.method);
+
+        // 清除搜索文本以显示所有项目
+        this.searchText = '';
+        this._onDidChangeTreeData.fire();
+
+        // 等待树视图更新完成
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 构建路径：项目节点 -> swagger标签节点 -> API节点
+        const projectRootPath = api.projectRootPath || '未分类项目';
+        const swaggerTag = api.swaggerTags || api.className || '未分类';
+
+        try {
+            // 获取所有项目节点
+            const projectItems = await this.getChildren(undefined);
+            const projectItem = projectItems.find(item => item.id === `project:${projectRootPath}`);
+            
+            if (projectItem) {
+                // 获取该项目下的所有swagger标签节点
+                const tagItems = await this.getChildren(projectItem);
+                const tagItem = tagItems.find(item => item.id === `swaggerTag:${projectRootPath}/${swaggerTag}`);
+                
+                if (tagItem) {
+                    // 获取该标签下的所有API节点
+                    const apiItems = await this.getChildren(tagItem);
+                    const apiItem = apiItems.find(item => item.id === apiId);
+                    
+                    if (apiItem) {
+                        Logger.info('[FocusApi] 找到完整路径，开始reveal');
+                        // 使用路径形式reveal
+                        await this.treeView.reveal(apiItem, { 
+                            select: true, 
+                            focus: true, 
+                            expand: true 
+                        });
+                        Logger.info('[FocusApi] reveal成功');
+                    } else {
+                        Logger.warn('[FocusApi] 未找到API节点:', apiId);
+                    }
+                } else {
+                    Logger.warn('[FocusApi] 未找到swagger标签节点:', swaggerTag);
+                }
+            } else {
+                Logger.warn('[FocusApi] 未找到项目节点:', projectRootPath);
+            }
+        } catch (error) {
+            Logger.error('[FocusApi] reveal失败:', error);
+        }
+    }
+
+    // 查找API对应的树项目（递归搜索）
+    private async findTreeItemByApiId(apiId: string): Promise<ApiTreeItem | undefined> {
+        // 获取根节点
+        const rootItems = await this.getChildren(undefined);
+        
+        // 递归搜索每个根节点
+        for (const rootItem of rootItems) {
+            const found = await this.searchInTreeItem(rootItem, apiId);
+            if (found) {
+                return found;
+            }
+        }
+        
+        return undefined;
+    }
+
+    // 在树项目及其子节点中搜索
+    private async searchInTreeItem(treeItem: ApiTreeItem, apiId: string): Promise<ApiTreeItem | undefined> {
+        // 检查当前节点是否匹配
+        if (treeItem.id === apiId) {
+            return treeItem;
+        }
+
+        // 如果当前节点是可折叠的，搜索其子节点
+        if (treeItem.collapsibleState !== vscode.TreeItemCollapsibleState.None) {
+            const children = await this.getChildren(treeItem);
+            for (const child of children) {
+                const found = await this.searchInTreeItem(child, apiId);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+
+        return undefined;
     }
 }
 

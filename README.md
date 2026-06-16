@@ -6,6 +6,7 @@
 
 | 版本 | 发布日期 | 主要更新 | 下载链接 |
 |------|----------|----------|----------|
+| 1.1.0 | 2026-06-16 | 搜索功能优化：实时模糊搜索、输入即时过滤、快速跳转聚焦、树视图聚焦 | [apifox-helper-vs-1.1.0.vsix](https://github.com/JacksonChen/apifox-helper-vs/releases/tag/v1.1.0) |
 | 1.0.0 | 2026-06-16 | 初始版本：Spring Boot Controller 解析、OpenAPI 文档生成、Apifox 一键同步、多项目支持、三级树结构 | [apifox-helper-vs-1.0.0.vsix](https://github.com/JacksonChen/apifox-helper-vs/releases/tag/v1.0.0) |
 
 ## 功能特性

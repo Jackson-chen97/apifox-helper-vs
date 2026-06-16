@@ -6,6 +6,7 @@ import { ApifoxService } from './services/ApifoxService.js';
 import { ConfigService } from './services/ConfigService.js';
 import { ApiTreeProvider } from './providers/ApiTreeProvider.js';
 import { Logger } from './utils/Logger.js';
+import { ApiEndpoint } from './types/index.js';
 
 export function activate(context: vscode.ExtensionContext) {
     // 初始化Logger
@@ -122,16 +123,64 @@ export function activate(context: vscode.ExtensionContext) {
     // 设置树视图引用，用于监听折叠/展开事件
     apiTreeProvider.setTreeView(treeView);
     
-    // 注册搜索命令
+    // 注册搜索命令（优化：模糊搜索快速选择）
     let searchApiDisposable = vscode.commands.registerCommand('apifox-helper.searchApi', async () => {
-        const searchText = await vscode.window.showInputBox({
-            prompt: '请输入搜索关键词',
-            placeHolder: '支持搜索路径、方法、描述和文件夹'
+        // 获取所有API数据
+        const allApis = apiTreeProvider.getApis();
+        
+        // 创建QuickPick
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.placeholder = '输入关键词搜索API（支持路径、方法、描述、类名）';
+        quickPick.matchOnDescription = true;
+        quickPick.matchOnDetail = true;
+        
+        // 生成QuickPickItem
+        const items: vscode.QuickPickItem[] = allApis.map(api => ({
+            label: `${api.method.toUpperCase()} ${api.path}`,
+            description: api.description || api.swaggerTags || api.className || '',
+            detail: `项目: ${api.projectRootPath ? api.projectRootPath.split(/[\\/]/).pop() : '未知'} | 文件: ${api.location.filePath.split(/[\\/]/).pop() || '未知'}`,
+            apiId: api.id
+        } as vscode.QuickPickItem & { apiId: string }));
+        
+        quickPick.items = items;
+        
+        // 监听输入变化，实时过滤
+        quickPick.onDidChangeValue((value) => {
+            if (!value) {
+                quickPick.items = items;
+                return;
+            }
+            
+            // 模糊搜索过滤
+            const filtered = items.filter(item => {
+                const searchText = value.toLowerCase();
+                return (
+                    item.label.toLowerCase().includes(searchText) ||
+                    (item.description && item.description.toLowerCase().includes(searchText)) ||
+                    (item.detail && item.detail.toLowerCase().includes(searchText))
+                );
+            });
+            quickPick.items = filtered;
         });
         
-        if (searchText !== undefined) {
-            apiTreeProvider.search(searchText);
-        }
+        // 监听选择事件
+        quickPick.onDidAccept(async () => {
+            const selected = quickPick.selectedItems[0] as (vscode.QuickPickItem & { apiId: string });
+            if (selected && selected.apiId) {
+                // 跳转到代码位置
+                await apiTreeProvider.gotoDefinition({ id: selected.apiId } as any);
+                // 聚焦树视图中的对应接口
+                await apiTreeProvider.focusApi(selected.apiId);
+            }
+            quickPick.dispose();
+        });
+        
+        // 监听隐藏事件
+        quickPick.onDidHide(() => {
+            quickPick.dispose();
+        });
+        
+        quickPick.show();
     });
 
     // 注册刷新命令

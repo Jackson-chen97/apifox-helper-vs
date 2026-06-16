@@ -1,0 +1,16 @@
+{
+  // Apifox API Key，必填项
+  // 获取方式：登录 Apifox -> 个人设置 -> API Keys
+  "apiKey": "",
+
+  // Apifox 项目 ID，必填项
+  // 获取方式：项目设置 -> 基本信息 -> 项目 ID
+  "apifoxProjectId": "",
+
+  // 项目名称，用于显示与Apifox无关
+  "projectName": "apifox-helper-vs",
+
+  // Apifox 模块 ID，可选
+  // 如果不填，接口将导入到默认模块
+  "apifoxModuleId": null
+}
